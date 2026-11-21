@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CyberGuard – Blockchain-based IoT Security Dashboard for real-time device trust monitoring and anomaly detection.">
+  <title>CyberGuard | IoT Security Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ─── Design Tokens ─────────────────────────────────────────── */
+    :root {
+      --bg:          #0d1117;
+      --surface:     #161b22;
+      --surface-2:   #1c2230;
+      --border:      rgba(255,255,255,0.07);
+      --accent:      #4f8ef7;
+      --success:     #3fb950;
+      --warning:     #d18f26;
+      --danger:      #f05050;
+      --probation:   #9d6fe8;
+      --text:        #c9d1d9;
+      --text-muted:  #6e7f96;
+      --text-bright: #e6edf3;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── Reset & Base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ─── Navbar ────────────────────────────────────────────────── */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 2.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+    .brand svg { width: 20px; height: 20px; }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--success);
+      font-weight: 500;
+    }
+    .live-dot::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: blink 2s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 0.35rem 0.9rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn-logout:hover { background: var(--danger); color: #fff; }
+
+    /* ─── Page Wrapper ──────────────────────────────────────────── */
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem 2.5rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    /* ─── Section Label ─────────────────────────────────────────── */
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── Card ──────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.6rem;
+    }
+    .card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1.2rem;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       SECTION 1 – SYSTEM OVERVIEW
+    ══════════════════════════════════════════════════════════════ */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(4,1fr) 260px;
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      margin-bottom: 0.35rem;
+    }
+    .stat-val {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--text-bright);
+      font-family: var(--mono);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Donut card */
+    .donut-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .donut-wrap {
+      position: relative;
+      height: 130px;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       SECTION 2 – DEVICE MONITORING
+    ══════════════════════════════════════════════════════════════ */
+    .device-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .device-table thead th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .device-table tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.15s;
+    }
+    .device-table tbody tr:last-child { border-bottom: none; }
+    .device-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+    .device-table td {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+
+    .device-id    { font-weight: 600; color: var(--text-bright); }
+    .device-type  { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* Trust bar */
+    .trust-wrap { display: flex; align-items: center; gap: 0.7rem; }
+    .trust-bar  { width: 90px; height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+    .trust-fill { height: 100%; border-radius: 3px; }
+    .trust-num  { font-family: var(--mono); font-size: 0.82rem; font-weight: 600; color: var(--text-bright); min-width: 30px; }
+
+    /* Sub-scores row */
+    .sub-scores { display: flex; gap: 6px; margin-top: 5px; }
+    .sub-pill {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+    .sub-pill span { color: var(--text); }
+
+    /* ─── Badges ────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .b-normal     { background: rgba(63,185,80,0.12);   color: var(--success); }
+    .b-suspicious { background: rgba(209,143,38,0.12);  color: var(--warning); }
+    .b-probation  { background: rgba(157,111,232,0.12); color: var(--probation); }
+    .b-blocked    { background: rgba(240,80,80,0.12);   color: var(--danger); }
+
+    /* ══════════════════════════════════════════════════════════════
+       SECTION 3 – ANALYTICS
+    ══════════════════════════════════════════════════════════════ */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1rem;
+    }
+
+    .recovery-list { display: flex; flex-direction: column; gap: 0.9rem; }
+    .recovery-item {
+      background: rgba(157,111,232,0.05);
+      border: 1px dashed rgba(157,111,232,0.25);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+    }
+    .recovery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .recovery-id   { font-weight: 600; color: var(--probation); font-size: 0.85rem; }
+    .recovery-pct  { font-family: var(--mono); font-size: 0.75rem; color: var(--text-muted); }
+    .rec-bar       { width: 100%; height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+    .rec-fill      { height: 100%; background: var(--probation); border-radius: 3px; }
+    .recovery-note { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.45rem; }
+
+    .chart-container { position: relative; height: 220px; }
+
+    /* ══════════════════════════════════════════════════════════════
+       SECTION 4 – SECURITY ALERTS
+    ══════════════════════════════════════════════════════════════ */
+    .alerts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .alert-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left-width: 3px;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .alert-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .alert-device { font-weight: 600; font-size: 0.85rem; color: var(--text-bright); }
+    .alert-ts     { font-family: var(--mono); font-size: 0.7rem; color: var(--text-muted); }
+    .alert-msg    { font-size: 0.82rem; color: var(--text); }
+    .alert-xai {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: rgba(0,0,0,0.2);
+      border-left: 2px solid var(--border);
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      margin-top: 0.2rem;
+    }
+    .alert-xai strong { color: var(--accent); }
+
+    .al-danger    { border-left-color: var(--danger); }
+    .al-warning   { border-left-color: var(--warning); }
+    .al-probation { border-left-color: var(--probation); }
+    .al-healing   { border-left-color: var(--accent); }
+
+    /* ══════════════════════════════════════════════════════════════
+       SECTION 5 – BLOCKCHAIN + DATASET
+    ══════════════════════════════════════════════════════════════ */
+    .bc-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1rem;
+    }
+
+    /* Blockchain chain */
+    .chain-scroll {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      padding-bottom: 0.5rem;
+    }
+    .chain-scroll::-webkit-scrollbar { height: 4px; }
+    .chain-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .block {
+      min-width: 200px;
+      flex-shrink: 0;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      position: relative;
+    }
+    .block + .block { margin-left: 28px; }
+    .block + .block::before {
+      content: '→';
+      position: absolute;
+      left: -22px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent);
+      font-size: 1rem;
+      opacity: 0.5;
+    }
+
+    .block-id {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.6rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .block-lock { color: var(--success); font-size: 0.65rem; }
+    .block-row  { margin-bottom: 0.35rem; }
+    .block-row label {
+      display: block;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 1px;
+    }
+    .block-row span { font-size: 0.75rem; color: var(--text); }
+    .hash { font-family: var(--mono); font-size: 0.62rem; color: var(--text-muted); word-break: break-all; }
+
+    /* Dataset table */
+    .ds-table { width: 100%; border-collapse: collapse; }
+    .ds-table th {
+      text-align: left;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 0.5rem 0.7rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .ds-table td {
+      padding: 0.5rem 0.7rem;
+      font-size: 0.78rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-family: var(--mono);
+      color: var(--text);
+    }
+    .ds-table tbody tr:last-child td { border-bottom: none; }
+    .ds-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+  </style>
+</head>
+<body>
+
+<!-- ─── Navbar ─────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    CYBERGUARD GATEWAY
+  </div>
+  <div class="nav-right">
+    <span class="live-dot">NODE OPERATIONAL</span>
+    <span id="clock">—</span>
+    <span style="color:var(--accent); font-weight:600; font-size:0.78rem;">BLOCKCHAIN v2.4</span>
+    <button class="btn-logout" onclick="logout()" id="btn-logout">SECURE LOGOUT</button>
+  </div>
+</nav>
+
+<!-- ─── Main Content ───────────────────────────────────────────── -->
+<div class="page">
+
+  <!-- ══ SECTION 1 · SYSTEM OVERVIEW ════════════════════════════ -->
+  <section id="section-overview" aria-label="System Overview">
+    <div class="section-label">01 · System Overview</div>
+    <div class="overview-grid">
+
+      <!-- Stat: Fleet -->
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(79,142,247,0.1); color:var(--accent);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+        </div>
+        <div class="stat-val">10</div>
+        <div class="stat-label">Total Fleet Devices</div>
+      </div>
+
+      <!-- Stat: Authorized -->
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(63,185,80,0.1); color:var(--success);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="stat-val" style="color:var(--success);">4</div>
+        <div class="stat-label">Authorized Devices</div>
+      </div>
+
+      <!-- Stat: Suspicious -->
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(209,143,38,0.1); color:var(--warning);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="stat-val" style="color:var(--warning);">2</div>
+        <div class="stat-label">Suspicious Devices</div>
+      </div>
+
+      <!-- Stat: Blocked -->
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(240,80,80,0.1); color:var(--danger);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        </div>
+        <div class="stat-val" style="color:var(--danger);">2</div>
+        <div class="stat-label">Isolated / Blocked</div>
+      </div>
+
+      <!-- Donut Chart -->
+      <div class="donut-card">
+        <div class="card-title" style="margin-bottom:0.6rem;">Fleet Distribution</div>
+        <div class="donut-wrap">
+          <canvas id="donutChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ SECTION 2 · DEVICE MONITORING ══════════════════════════ -->
+  <section id="section-monitoring" aria-label="Device Monitoring">
+    <div class="section-label">02 · Device Monitoring</div>
+    <div class="card" style="padding: 0;">
+      <table class="device-table" id="device-table">
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Trust Score</th>
+            <th>Security State</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="device-tbody">
+          <!-- Rendered by JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ SECTION 3 · ANALYTICS ═══════════════════════════════════ -->
+  <section id="section-analytics" aria-label="Analytics">
+    <div class="section-label">03 · Analytics</div>
+    <div class="analytics-grid">
+
+      <!-- Trust Trend Chart -->
+      <div class="card">
+        <div class="card-title">Trust Score Trend — Adaptive Recovery Path (Probation)</div>
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Recovery Zone -->
+      <div class="card">
+        <div class="card-title">Recovery &amp; Probation Zone</div>
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem; line-height:1.6;">
+          Sandboxed devices demonstrating stable telemetry. Trust is restored incrementally by policy.
+        </p>
+        <div class="recovery-list">
+          <div class="recovery-item">
+            <div class="recovery-header">
+              <span class="recovery-id">Device_003</span>
+              <span class="recovery-pct">79%</span>
+            </div>
+            <div class="rec-bar"><div class="rec-fill" style="width:79%;"></div></div>
+            <div class="recovery-note">Nominal metrics trending upward — sandbox phase.</div>
+          </div>
+          <div class="recovery-item">
+            <div class="recovery-header">
+              <span class="recovery-id">Device_004</span>
+              <span class="recovery-pct">81%</span>
+            </div>
+            <div class="rec-bar"><div class="rec-fill" style="width:81%;"></div></div>
+            <div class="recovery-note">Stable telemetry — approaching reintegration threshold.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ SECTION 4 · SECURITY ALERTS ════════════════════════════ -->
+  <section id="section-alerts" aria-label="Security Alerts">
+    <div class="section-label">04 · Security Alerts</div>
+    <div class="alerts-grid">
+
+      <div class="alert-card al-danger">
+        <div class="alert-header">
+          <span class="alert-device">Device_001 — Blocked</span>
+          <span class="alert-ts">13:08:23</span>
+        </div>
+        <div class="alert-msg">Critical trust failure · Network isolation enforced.</div>
+        <div class="alert-xai"><strong>XAI:</strong> 41% deviation in physiological metrics from historical baseline. Accuracy score collapsed to 0.12.</div>
+      </div>
+
+      <div class="alert-card al-danger">
+        <div class="alert-header">
+          <span class="alert-device">Device_002 — Blocked</span>
+          <span class="alert-ts">13:08:23</span>
+        </div>
+        <div class="alert-msg">Critical trust failure · Network isolation enforced.</div>
+        <div class="alert-xai"><strong>XAI:</strong> 43% deviation in physiological metrics. Stability score at 0.21 — well below safety threshold 0.50.</div>
+      </div>
+
+      <div class="alert-card al-warning">
+        <div class="alert-header">
+          <span class="alert-device">Device_005 — Suspicious</span>
+          <span class="alert-ts">13:08:23</span>
+        </div>
+        <div class="alert-msg">Anomalous behavior detected · Active monitoring initiated.</div>
+        <div class="alert-xai"><strong>XAI:</strong> Intermittent 20% packet delay and mild thermal deviation detected. Trust at 0.58 — flagged for observation.</div>
+      </div>
+
+      <div class="alert-card al-warning">
+        <div class="alert-header">
+          <span class="alert-device">Device_006 — Suspicious</span>
+          <span class="alert-ts">13:08:23</span>
+        </div>
+        <div class="alert-msg">Anomalous behavior detected · Active monitoring initiated.</div>
+        <div class="alert-xai"><strong>XAI:</strong> 14% packet delay detected. Stability at 0.44 — marginal. Continued monitoring before escalation.</div>
+      </div>
+
+      <div class="alert-card al-probation">
+        <div class="alert-header">
+          <span class="alert-device">Device_003 — Probation</span>
+          <span class="alert-ts">13:08:23</span>
+        </div>
+        <div class="alert-msg">Device under adaptive recovery sandbox protocol.</div>
+        <div class="alert-xai"><strong>XAI:</strong> Trust recovering steadily (0.79). Sandbox policy: metrics must remain nominal for 3 consecutive cycles.</div>
+      </div>
+
+      <div class="alert-card al-healing">
+        <div class="alert-header">
+          <span class="alert-device">Smart Contract — Self-Heal</span>
+          <span class="alert-ts">13:08:23</span>
+        </div>
+        <div class="alert-msg">Data traffic rerouted via self-healing smart contract.</div>
+        <div class="alert-xai"><strong>XAI:</strong> Load from blocked Device_001 &amp; Device_002 rerouted to Device_009 and Device_010 to maintain service continuity.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ SECTION 5 · BLOCKCHAIN + DATASET ════════════════════════ -->
+  <section id="section-blockchain" aria-label="Blockchain and Dataset">
+    <div class="section-label">05 · Blockchain Ledger &amp; Dataset</div>
+    <div class="bc-layout">
+
+      <!-- Blockchain Chain -->
+      <div class="card" style="overflow:hidden;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+          Immutable Security Ledger
+          <span style="color:var(--success); font-size:0.7rem; font-weight:600;">● CHAIN VERIFIED</span>
+        </div>
+        <div class="chain-scroll">
+          <!-- Block 1 -->
+          <div class="block">
+            <div class="block-id">BLOCK #1 <span class="block-lock">🔒</span></div>
+            <div class="block-row"><label>Origin Node</label><span>Device_003</span></div>
+            <div class="block-row"><label>Recorded Trust</label><span>0.79</span></div>
+            <div class="block-row"><label>Action</label><span>SANDBOXED</span></div>
+            <div class="block-row"><label>SHA-256</label><span class="hash">9c95021e…083da</span></div>
+            <div class="block-row"><label>Prev Hash</label><span class="hash">00000000…0000</span></div>
+          </div>
+          <!-- Block 2 -->
+          <div class="block">
+            <div class="block-id">BLOCK #2 <span class="block-lock">🔒</span></div>
+            <div class="block-row"><label>Origin Node</label><span>Device_004</span></div>
+            <div class="block-row"><label>Recorded Trust</label><span>0.81</span></div>
+            <div class="block-row"><label>Action</label><span>SANDBOXED</span></div>
+            <div class="block-row"><label>SHA-256</label><span class="hash">cf9c99bd…3f56</span></div>
+            <div class="block-row"><label>Prev Hash</label><span class="hash">9c95021e…083da</span></div>
+          </div>
+          <!-- Block 3 -->
+          <div class="block">
+            <div class="block-id">BLOCK #3 <span class="block-lock">🔒</span></div>
+            <div class="block-row"><label>Origin Node</label><span>Device_005</span></div>
+            <div class="block-row"><label>Recorded Trust</label><span>0.58</span></div>
+            <div class="block-row"><label>Action</label><span>ALLOWED</span></div>
+            <div class="block-row"><label>SHA-256</label><span class="hash">a17d374a…1c38</span></div>
+            <div class="block-row"><label>Prev Hash</label><span class="hash">cf9c99bd…3f56</span></div>
+          </div>
+          <!-- Block 4 -->
+          <div class="block">
+            <div class="block-id">BLOCK #4 <span class="block-lock">🔒</span></div>
+            <div class="block-row"><label>Origin Node</label><span>Device_007</span></div>
+            <div class="block-row"><label>Recorded Trust</label><span>0.93</span></div>
+            <div class="block-row"><label>Action</label><span>ALLOWED</span></div>
+            <div class="block-row"><label>SHA-256</label><span class="hash">f24fddf7…0fa9</span></div>
+            <div class="block-row"><label>Prev Hash</label><span class="hash">a17d374a…1c38</span></div>
+          </div>
+          <!-- Block 5 -->
+          <div class="block">
+            <div class="block-id">BLOCK #5 <span class="block-lock">🔒</span></div>
+            <div class="block-row"><label>Origin Node</label><span>Device_009</span></div>
+            <div class="block-row"><label>Recorded Trust</label><span>0.89</span></div>
+            <div class="block-row"><label>Action</label><span>ALLOWED</span></div>
+            <div class="block-row"><label>SHA-256</label><span class="hash">f096195c…2fda</span></div>
+            <div class="block-row"><label>Prev Hash</label><span class="hash">f24fddf7…0fa9</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dataset Preview -->
+      <div class="card" style="overflow:hidden;">
+        <div class="card-title">Dataset Sample — IoT Trust Log</div>
+        <div style="overflow-x:auto;">
+          <table class="ds-table">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Acc</th>
+                <th>Stb</th>
+                <th>Lat</th>
+                <th>Trust</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Dev_001</td><td>0.12</td><td>0.39</td><td>0.71</td><td style="color:var(--danger)">0.32</td><td>BLOCKED</td></tr>
+              <tr><td>Dev_002</td><td>0.23</td><td>0.21</td><td>0.45</td><td style="color:var(--danger)">0.27</td><td>BLOCKED</td></tr>
+              <tr><td>Dev_003</td><td>0.84</td><td>0.69</td><td>0.81</td><td style="color:var(--probation)">0.79</td><td>SANDBOX</td></tr>
+              <tr><td>Dev_004</td><td>0.83</td><td>0.67</td><td>0.98</td><td style="color:var(--probation)">0.81</td><td>SANDBOX</td></tr>
+              <tr><td>Dev_005</td><td>0.58</td><td>0.41</td><td>0.86</td><td style="color:var(--warning)">0.58</td><td>ALLOWED</td></tr>
+              <tr><td>Dev_006</td><td>0.79</td><td>0.44</td><td>0.89</td><td style="color:var(--warning)">0.71</td><td>ALLOWED</td></tr>
+              <tr><td>Dev_007</td><td>0.93</td><td>0.98</td><td>0.86</td><td style="color:var(--success)">0.93</td><td>ALLOWED</td></tr>
+              <tr><td>Dev_008</td><td>0.86</td><td>0.98</td><td>0.88</td><td style="color:var(--success)">0.90</td><td>ALLOWED</td></tr>
+              <tr><td>Dev_009</td><td>0.86</td><td>0.92</td><td>0.94</td><td style="color:var(--success)">0.89</td><td>ALLOWED</td></tr>
+              <tr><td>Dev_010</td><td>0.89</td><td>0.86</td><td>0.97</td><td style="color:var(--success)">0.90</td><td>ALLOWED</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div><!-- /page -->
+
+<script>
+/* ─── Auth guard ─────────────────────────────────────────────── */
+if (!sessionStorage.getItem('hn_authenticated')) {
+  window.location.replace('login.html');
+}
+function logout() {
+  sessionStorage.removeItem('hn_authenticated');
+  window.location.replace('login.html');
+}
+
+/* ─── Clock ──────────────────────────────────────────────────── */
+function tick() { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }
+tick(); setInterval(tick, 1000);
+
+/* ─── Device Data ────────────────────────────────────────────── */
+const DEVICES = [
+  { id:'Device_001', type:'Medical Device',       acc:0.12, stb:0.39, lat:0.71, trust:0.32, state:'HIGH RISK',  action:'BLOCKED',   sc:'b-blocked',    ac:'b-blocked'    },
+  { id:'Device_002', type:'Security Camera',      acc:0.23, stb:0.21, lat:0.45, trust:0.27, state:'HIGH RISK',  action:'BLOCKED',   sc:'b-blocked',    ac:'b-blocked'    },
+  { id:'Device_003', type:'Environmental Sensor', acc:0.84, stb:0.69, lat:0.81, trust:0.79, state:'PROBATION',  action:'SANDBOXED', sc:'b-probation',  ac:'b-probation'  },
+  { id:'Device_004', type:'Medical Device',       acc:0.83, stb:0.67, lat:0.98, trust:0.81, state:'PROBATION',  action:'SANDBOXED', sc:'b-probation',  ac:'b-probation'  },
+  { id:'Device_005', type:'Security Camera',      acc:0.58, stb:0.41, lat:0.86, trust:0.58, state:'SUSPICIOUS', action:'ALLOWED',   sc:'b-suspicious', ac:'b-normal'     },
+  { id:'Device_006', type:'Environmental Sensor', acc:0.79, stb:0.44, lat:0.89, trust:0.71, state:'SUSPICIOUS', action:'ALLOWED',   sc:'b-suspicious', ac:'b-normal'     },
+  { id:'Device_007', type:'Medical Device',       acc:0.93, stb:0.98, lat:0.86, trust:0.93, state:'NORMAL',     action:'ALLOWED',   sc:'b-normal',     ac:'b-normal'     },
+  { id:'Device_008', type:'Security Camera',      acc:0.86, stb:0.98, lat:0.88, trust:0.90, state:'NORMAL',     action:'ALLOWED',   sc:'b-normal',     ac:'b-normal'     },
+  { id:'Device_009', type:'Environmental Sensor', acc:0.86, stb:0.92, lat:0.94, trust:0.89, state:'NORMAL',     action:'ALLOWED',   sc:'b-normal',     ac:'b-normal'     },
+  { id:'Device_010', type:'Medical Device',       acc:0.89, stb:0.86, lat:0.97, trust:0.90, state:'NORMAL',     action:'ALLOWED',   sc:'b-normal',     ac:'b-normal'     },
+];
+
+function trustColor(t) {
+  if (t < 0.4) return 'var(--danger)';
+  if (t < 0.65) return 'var(--warning)';
+  if (t < 0.82) return 'var(--probation)';
+  return 'var(--success)';
+}
+
+const tbody = document.getElementById('device-tbody');
+DEVICES.forEach(d => {
+  const col = trustColor(d.trust);
+  tbody.insertAdjacentHTML('beforeend', `
+    <tr>
+      <td>
+        <div class="device-id">${d.id}</div>
+        <div class="device-type">${d.type}</div>
+      </td>
+      <td>
+        <div class="trust-wrap">
+          <div class="trust-bar">
+            <div class="trust-fill" style="width:${d.trust*100}%; background:${col};"></div>
+          </div>
+          <span class="trust-num" style="color:${col};">${d.trust.toFixed(2)}</span>
+        </div>
+        <div class="sub-scores">
+          <span class="sub-pill">Acc <span>${d.acc.toFixed(2)}</span></span>
+          <span class="sub-pill">Stb <span>${d.stb.toFixed(2)}</span></span>
+          <span class="sub-pill">Lat <span>${d.lat.toFixed(2)}</span></span>
+        </div>
+      </td>
+      <td><span class="badge ${d.sc}">${d.state}</span></td>
+      <td><span class="badge ${d.ac}">${d.action}</span></td>
+    </tr>
+  `);
+});
+
+/* ─── Charts ─────────────────────────────────────────────────── */
+// Donut
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Normal (4)', 'Suspicious (2)', 'Probation (2)', 'Blocked (2)'],
+    datasets: [{
+      data: [4, 2, 2, 2],
+      backgroundColor: ['#3fb950','#d18f26','#9d6fe8','#f05050'],
+      borderWidth: 0,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    plugins: {
+      legend: { position: 'right', labels: { color:'#6e7f96', font:{ family:'Inter', size:11 }, padding:12, boxWidth:10 } }
+    }
+  }
+});
+
+// Trend
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: ['T-5','T-4','T-3','T-2','T-1','Now'],
+    datasets: [
+      {
+        label: 'Device_003',
+        data: [0.20, 0.28, 0.40, 0.55, 0.68, 0.79],
+        borderColor: '#9d6fe8',
+        backgroundColor: 'rgba(157,111,232,0.07)',
+        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#9d6fe8'
+      },
+      {
+        label: 'Device_004',
+        data: [0.22, 0.32, 0.45, 0.60, 0.72, 0.81],
+        borderColor: '#4f8ef7',
+        backgroundColor: 'rgba(79,142,247,0.05)',
+        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#4f8ef7'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color:'#6e7f96', font:{ family:'Inter', size:11 }, padding:14, boxWidth:12 } }
+    },
+    scales: {
+      y: {
+        min: 0, max: 1.0,
+        grid: { color:'rgba(255,255,255,0.04)' },
+        ticks: { color:'#6e7f96', font:{ size: 11 } }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color:'#6e7f96', font:{ size: 11 } }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
